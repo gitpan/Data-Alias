@@ -1,6 +1,8 @@
 --- 
 abstract: Comprehensive set of aliasing operations
-author: Matthijs van Duin <xmath@cpan.org>
+author:
+  - 'Matthijs van Duin <xmath@cpan.org>'
+  - 'Andrew Main (Zefram) <zefram@fysh.org>'
 distribution_type: module
 generated_by: Module::Install version 0.67
 license: perl
@@ -14,4 +16,4 @@ no_index:
     - t
 requires: 
   perl: 5.8.1
-version: 1.07
+version: 1.08

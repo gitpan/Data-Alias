@@ -5,7 +5,7 @@ use 5.008001;
 use strict;
 use warnings;
 
-our $VERSION = '1.07';
+our $VERSION = '1.08';
 
 use base 'Exporter';
 use base 'DynaLoader';
@@ -367,11 +367,15 @@ the Amsterdam Perl Mongers, for their valuable feedback.
 
 =head1 AUTHOR
 
-Matthijs van Duin <xmath@cpan.org>
+Matthijs van Duin <xmath@cpan.org> developed the module originally,
+and maintained it until 2007.  Andrew Main (Zefram) <zefram@fysh.org>
+updated it to work with Perl versions 5.11.0 and later.
 
 =head1 LICENSE
 
-Copyright (C) 2003-2007  Matthijs van Duin.  All rights reserved.
+Copyright (C) 2003-2007  Matthijs van Duin.
+Copyright (C) 2010 Andrew Main (Zefram) <zefram@fysh.org>.
+All rights reserved.
 This program is free software; you can redistribute it and/or modify 
 it under the same terms as Perl itself.
 

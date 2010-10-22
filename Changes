@@ -1,5 +1,10 @@
 Revision history for Perl extension Data::Alias
 
+1.08  Fri Oct 22 09:39 BST 2010
+	- Updated to work with Perl versions 5.11.0 up to 5.13.0,
+	  including particularly the major change in when rv2cv ops get
+	  built in 5.11.2
+
 1.07  Mon Sep 10 22:25 CEST 2007
 	- Fixed reference miscounting for 'my VAR' inside alias
 
