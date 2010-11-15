@@ -46,7 +46,15 @@ is $x, 3;
 $x = alias { !alias 1, 2 }, 3;
 is $x, !2;
 
-use Switch;  # install a source filter, just for fun
+BEGIN {
+	# install a source filter, just for fun
+	if(eval { require Filter::Util::Call; 1 }) {
+		Filter::Util::Call::filter_add(sub {
+			my $s = Filter::Util::Call::filter_read();
+			return $s;
+		});
+	}
+}
 
 is alias
 (42), 42;

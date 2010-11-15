@@ -20,15 +20,16 @@
 #endif
 
 
-#if defined(PERL_CORE) && defined(MULTIPLICITY)
-#undef PL_sv_placeholder
-#define PL_sv_placeholder (*Perl_Gsv_placeholder_ptr(NULL))
-#endif
-
-
 #ifndef PERL_COMBI_VERSION
 #define PERL_COMBI_VERSION (PERL_REVISION * 1000000 + PERL_VERSION * 1000 + \
 				PERL_SUBVERSION)
+#endif
+
+
+#if defined(PERL_CORE) && defined(MULTIPLICITY) && \
+		(PERL_COMBI_VERSION < 5013006)
+#undef PL_sv_placeholder
+#define PL_sv_placeholder (*Perl_Gsv_placeholder_ptr(NULL))
 #endif
 
 
