@@ -1,5 +1,10 @@
 Revision history for Perl extension Data::Alias
 
+1.10  Sun Nov 21 09:04 GMT 2010
+	- Updated to work with Perl version 5.13.7, where lex_end()
+	  has disappeared and mod() is now in the public API under the
+	  name op_lvalue()
+
 1.09  Mon Nov 15 21:36 GMT 2010
 	- Modify source filter test to use Filter::Util::Call directly
 	  instead of the deprecated Switch, and to not fail if it is not

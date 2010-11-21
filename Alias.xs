@@ -107,6 +107,14 @@
 #define Nullop ((OP*)NULL)
 #endif
 
+#ifndef lex_end
+#define lex_end() ((void) 0)
+#endif
+
+#ifndef op_lvalue
+#define op_lvalue(o, t) mod(o, t)
+#endif
+
 #if (PERL_COMBI_VERSION >= 5011000) && !defined(SVt_RV)
 #define SVt_RV SVt_IV
 #endif
@@ -154,7 +162,7 @@ static char const msg_no_symref[] =
 
 #define OPpUSEFUL 128
 
-#define MOD(op) mod((op), OP_GREPSTART)
+#define MOD(op) op_lvalue((op), OP_GREPSTART)
 
 #ifndef SVs_PADBUSY
 #define SVs_PADBUSY 0
