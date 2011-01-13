@@ -1,6 +1,6 @@
 /* Copyright (C) 2003, 2004, 2006, 2007  Matthijs van Duin <xmath@cpan.org>
  *
- * Copyright (C) 2010 Andrew Main (Zefram) <zefram@fysh.org>
+ * Copyright (C) 2010, 2011 Andrew Main (Zefram) <zefram@fysh.org>
  *
  * Parts from perl, which is Copyright (C) 1991-2006 Larry Wall and others
  *
@@ -168,6 +168,8 @@ static char const msg_no_symref[] =
 #define SVs_PADBUSY 0
 #endif
 #define SVs_PADFLAGS (SVs_PADBUSY|SVs_PADMY|SVs_PADTMP)
+
+#define DA_HAVE_OP_DORASSIGN (PERL_COMBI_VERSION >= 5009000)
 
 #define DA_TIED_ERR "Can't %s alias %s tied %s"
 #define DA_ODD_HASH_ERR "Odd number of elements in hash assignment"
@@ -1039,7 +1041,7 @@ OP *DataAlias_pp_orassign(pTHX) {
 	RETURN;
 }
 
-#ifdef pp_dorassign
+#if DA_HAVE_OP_DORASSIGN
 OP *DataAlias_pp_dorassign(pTHX) {
 	dSP;
 	SV *a2 = POPs;
@@ -1571,7 +1573,7 @@ STATIC int da_transform(pTHX_ OP *op, int sib) {
 			if (0)
 		case OP_ORASSIGN:
 			op->op_ppaddr = DataAlias_pp_orassign;
-#ifdef pp_dorassign
+#if DA_HAVE_OP_DORASSIGN
 			if (0)
 		case OP_DORASSIGN:
 			op->op_ppaddr = DataAlias_pp_dorassign;

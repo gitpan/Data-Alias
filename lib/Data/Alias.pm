@@ -5,7 +5,7 @@ use 5.008001;
 use strict;
 use warnings;
 
-our $VERSION = '1.10';
+our $VERSION = '1.11';
 
 use base 'Exporter';
 use base 'DynaLoader';
@@ -374,7 +374,7 @@ updated it to work with Perl versions 5.11.0 and later.
 =head1 LICENSE
 
 Copyright (C) 2003-2007  Matthijs van Duin.
-Copyright (C) 2010 Andrew Main (Zefram) <zefram@fysh.org>.
+Copyright (C) 2010, 2011 Andrew Main (Zefram) <zefram@fysh.org>.
 All rights reserved.
 This program is free software; you can redistribute it and/or modify 
 it under the same terms as Perl itself.
