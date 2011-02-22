@@ -1,5 +1,9 @@
 Revision history for Perl extension Data::Alias
 
+1.12  Tue Feb 22 20:47 GMT 2011
+	- Updated to work with Perl version 5.13.10, where GvGP() and
+	  GvCV() are not directly-assignable lvalues
+
 1.11  Thu Jan 13 20:23 GMT 2011
 	- Don't rely on details of core's pp_* functions to determine
 	  whether an opcode exists, because they can change unpredictably

@@ -88,6 +88,13 @@
 #define SvREFCNT_inc_simple_void_NN SvREFCNT_inc_simple_NN
 #endif
 
+#ifndef GvGP_set
+#define GvGP_set(gv, val) (GvGP(gv) = val)
+#endif
+#ifndef GvCV_set
+#define GvCV_set(gv, val) (GvCV(gv) = val)
+#endif
+
 #if (PERL_COMBI_VERSION >= 5009003)
 #define DA_FEATURE_MULTICALL 1
 #endif
@@ -293,6 +300,13 @@ STATIC SV *da_fetch(pTHX_ SV *a1, SV *a2) {
 		}							\
 	} STMT_END
 
+STATIC void da_restore_gvcv(pTHX_ GV *gv) {
+	CV *restcv = (CV *) SSPOPPTR;
+	CV *oldcv = GvCV(gv);
+	GvCV_set(gv, restcv);
+	SvREFCNT_dec(oldcv);
+	SvREFCNT_dec((SV *) gv);
+}
 
 STATIC void da_alias(pTHX_ SV *a1, SV *a2, SV *value) {
 	PREP_ALIAS_INC(value);
@@ -329,19 +343,35 @@ STATIC void da_alias(pTHX_ SV *a1, SV *a2, SV *value) {
 			Perl_croak(aTHX_ PL_no_modify);
 #endif
 		switch (SvTYPE(value)) {
-			CV *cv;
+			CV *oldcv;
 		case SVt_PVCV:
-			svp = (SV **) &GvCV(gv);
-			cv = (CV *) *svp;
-			if (cv == (CV *) value)
-				break;
-			if (GvCVGEN(gv)) {
-				GvCV(gv) = NULL;
-				GvCVGEN(gv) = 0;
-				SvREFCNT_dec(cv);
+			oldcv = GvCV(gv);
+			if (oldcv != (CV *) value) {
+				if (GvCVGEN(gv)) {
+					GvCV_set(gv, NULL);
+					GvCVGEN(gv) = 0;
+					SvREFCNT_dec((SV *) oldcv);
+					oldcv = NULL;
+				}
+				PL_sub_generation++;
 			}
-			PL_sub_generation++;
-			break;
+			GvMULTI_on(gv);
+			if (GvINTRO(gv)) {
+				GvINTRO_off(gv);
+				SSCHECK(4);
+				SSPUSHPTR((SV *) oldcv);
+				SSPUSHDXPTR((void (*)(pTHX_ void *))
+					da_restore_gvcv);
+				SSPUSHPTR(SvREFCNT_inc_simple_NN((SV *) gv));
+				SSPUSHINT(SAVEt_DESTRUCTOR_X);
+				GvCV_set(gv,
+					(CV *) SvREFCNT_inc_simple_NN(value));
+			} else {
+				GvCV_set(gv,
+					(CV *) SvREFCNT_inc_simple_NN(value));
+				SvREFCNT_dec((SV *) oldcv);
+			}
+			return;
 		case SVt_PVAV:	svp = (SV **) &GvAV(gv); break;
 		case SVt_PVHV:	svp = (SV **) &GvHV(gv); break;
 		case SVt_PVFM:	svp = (SV **) &GvFORM(gv); break;
@@ -397,7 +427,7 @@ STATIC void da_unlocalize_gvar(pTHX_ GP *gp) {
 		SV *gv = newSV(0);
 		sv_upgrade(gv, SVt_PVGV);
 		SvSCREAM_on(gv);
-		GvGP(gv) = gp;
+		GvGP_set(gv, gp);
 		sv_free(gv);
 	}
 }
