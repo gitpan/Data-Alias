@@ -25,6 +25,12 @@
 				PERL_SUBVERSION)
 #endif
 
+#if defined(USE_DTRACE) && defined(PERL_CORE)
+#undef ENTRY_PROBE
+#undef RETURN_PROBE
+#define ENTRY_PROBE(func, file, line, stash)
+#define RETURN_PROBE(func, file, line, stash)
+#endif
 
 #if defined(PERL_CORE) && defined(MULTIPLICITY) && \
 		(PERL_COMBI_VERSION < 5013006)
@@ -400,7 +406,8 @@ STATIC void da_alias(pTHX_ SV *a1, SV *a2, SV *value) {
 			return;
 		case SVt_PVHV:
 			if (value == &PL_sv_undef) {
-				hv_delete_ent((HV *) a1, a2, G_DISCARD, 0);
+				(void) hv_delete_ent((HV *) a1, a2,
+					G_DISCARD, 0);
 			} else {
 				if (!hv_store_ent((HV *) a1, a2, value, 0))
 					SvREFCNT_dec(value);
@@ -454,13 +461,13 @@ STATIC SV *da_refgen(pTHX_ SV *sv) {
 	return rv;
 }
 
-OP *DataAlias_pp_srefgen(pTHX) {
+STATIC OP *DataAlias_pp_srefgen(pTHX) {
 	dSP;
 	SETs(da_refgen(aTHX_ TOPs));
 	RETURN;
 }
 
-OP *DataAlias_pp_refgen(pTHX) {
+STATIC OP *DataAlias_pp_refgen(pTHX) {
 	dSP; dMARK;
 	if (GIMME_V != G_LIST) {
 		++MARK;
@@ -474,7 +481,7 @@ OP *DataAlias_pp_refgen(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_anonlist(pTHX) {
+STATIC OP *DataAlias_pp_anonlist(pTHX) {
 	dSP; dMARK;
 	I32 i = SP - MARK;
 	AV *av = newAV();
@@ -494,7 +501,7 @@ OP *DataAlias_pp_anonlist(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_anonhash(pTHX) {
+STATIC OP *DataAlias_pp_anonhash(pTHX) {
 	dSP; dMARK; dORIGMARK;
 	HV *hv = (HV *) newHV();
 	SV *sv;
@@ -507,9 +514,9 @@ OP *DataAlias_pp_anonhash(pTHX) {
 			Perl_warner(aTHX_ packWARN(WARN_MISC),
 				"Odd number of elements in anonymous hash");
 		if (val == &PL_sv_undef)
-			hv_delete_ent(hv, key, G_DISCARD, 0);
+			(void) hv_delete_ent(hv, key, G_DISCARD, 0);
 		else
-			hv_store_ent(hv, key, val, 0);
+			(void) hv_store_ent(hv, key, val, 0);
 	}
 	SP = ORIGMARK;
 	if (PL_op->op_flags & OPf_SPECIAL) {
@@ -522,7 +529,7 @@ OP *DataAlias_pp_anonhash(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_aelemfast(pTHX) {
+STATIC OP *DataAlias_pp_aelemfast(pTHX) {
 	dSP;
 	AV *av = (PL_op->op_flags & OPf_SPECIAL) ?
 			(AV *) PAD_SV(PL_op->op_targ) : GvAVn(cGVOP_gv);
@@ -543,7 +550,7 @@ STATIC bool da_badmagic(pTHX_ SV *sv) {
 	return FALSE;
 }
 
-OP *DataAlias_pp_aelem(pTHX) {
+STATIC OP *DataAlias_pp_aelem(pTHX) {
 	dSP;
 	SV *elem = POPs, **svp;
 	AV *av = (AV *) POPs;
@@ -584,7 +591,7 @@ STATIC I32 da_avhv_index(pTHX_ AV *av, SV *key) {
 }
 #endif
 
-OP *DataAlias_pp_helem(pTHX) {
+STATIC OP *DataAlias_pp_helem(pTHX) {
 	dSP;
 	SV *key = POPs;
 	HV *hv = (HV *) POPs;
@@ -613,7 +620,7 @@ OP *DataAlias_pp_helem(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_aslice(pTHX) {
+STATIC OP *DataAlias_pp_aslice(pTHX) {
 	dSP; dMARK;
 	AV *av = (AV *) POPs;
 	IV max, count;
@@ -646,7 +653,7 @@ OP *DataAlias_pp_aslice(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_hslice(pTHX) {
+STATIC OP *DataAlias_pp_hslice(pTHX) {
 	dSP; dMARK;
 	HV *hv = (HV *) POPs;
 	SV *key;
@@ -685,7 +692,7 @@ OP *DataAlias_pp_hslice(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_padsv(pTHX) {
+STATIC OP *DataAlias_pp_padsv(pTHX) {
 	dSP;
 	IV index = PL_op->op_targ;
 	if (PL_op->op_private & OPpLVAL_INTRO) {
@@ -696,7 +703,7 @@ OP *DataAlias_pp_padsv(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_padav(pTHX) {
+STATIC OP *DataAlias_pp_padav(pTHX) {
 	dSP; dTARGET;
 	if (PL_op->op_private & OPpLVAL_INTRO)
 		SAVECLEARSV(PAD_SVl(PL_op->op_targ));
@@ -704,7 +711,7 @@ OP *DataAlias_pp_padav(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_padhv(pTHX) {
+STATIC OP *DataAlias_pp_padhv(pTHX) {
 	dSP; dTARGET;
 	if (PL_op->op_private & OPpLVAL_INTRO)
 		SAVECLEARSV(PAD_SVl(PL_op->op_targ));
@@ -712,7 +719,7 @@ OP *DataAlias_pp_padhv(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_gvsv(pTHX) {
+STATIC OP *DataAlias_pp_gvsv(pTHX) {
 	dSP;
 	GV *gv = cGVOP_gv;
 	if (PL_op->op_private & OPpLVAL_INTRO) {
@@ -723,7 +730,7 @@ OP *DataAlias_pp_gvsv(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_gvsv_r(pTHX) {
+STATIC OP *DataAlias_pp_gvsv_r(pTHX) {
 	dSP;
 	GV *gv = cGVOP_gv;
 	if (PL_op->op_private & OPpLVAL_INTRO) {
@@ -743,7 +750,7 @@ STATIC GV *fixglob(pTHX_ GV *gv) {
 	return egv;
 }
 
-OP *DataAlias_pp_rv2sv(pTHX) {
+STATIC OP *DataAlias_pp_rv2sv(pTHX) {
 	dSP; dPOPss;
 	if (!SvROK(sv) && SvTYPE(sv) != SVt_PVGV) do {
 		const char *tname;
@@ -785,7 +792,7 @@ OP *DataAlias_pp_rv2sv(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_rv2sv_r(pTHX) {
+STATIC OP *DataAlias_pp_rv2sv_r(pTHX) {
 	U8 savedflags;
 	OP *op = PL_op, *ret;
 
@@ -803,7 +810,7 @@ OP *DataAlias_pp_rv2sv_r(pTHX) {
 	return ret;
 }
 
-OP *DataAlias_pp_rv2gv(pTHX) {
+STATIC OP *DataAlias_pp_rv2gv(pTHX) {
 	dSP; dPOPss;
 	if (SvROK(sv)) {
 	wasref:	sv = SvRV(sv);
@@ -829,7 +836,7 @@ OP *DataAlias_pp_rv2gv(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_rv2av(pTHX) {
+STATIC OP *DataAlias_pp_rv2av(pTHX) {
 	OP *ret = PL_ppaddr[OP_RV2AV](aTHX);
 	dSP;
 	SV *av = POPs;
@@ -838,7 +845,7 @@ OP *DataAlias_pp_rv2av(pTHX) {
 	return ret;
 }
 
-OP *DataAlias_pp_rv2hv(pTHX) {
+STATIC OP *DataAlias_pp_rv2hv(pTHX) {
 	OP *ret = PL_ppaddr[OP_RV2HV](aTHX);
 	dSP;
 	SV *hv = POPs;
@@ -847,7 +854,7 @@ OP *DataAlias_pp_rv2hv(pTHX) {
 	return ret;
 }
 
-OP *DataAlias_pp_sassign(pTHX) {
+STATIC OP *DataAlias_pp_sassign(pTHX) {
 	dSP;
 	SV *a1, *a2, *value;
 	if (PL_op->op_private & OPpASSIGN_BACKWARDS) {
@@ -860,7 +867,7 @@ OP *DataAlias_pp_sassign(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_aassign(pTHX) {
+STATIC OP *DataAlias_pp_aassign(pTHX) {
 	dSP;
 	SV **left, **llast, **right, **rlast;
 	I32 gimme = GIMME_V;
@@ -1047,7 +1054,7 @@ OP *DataAlias_pp_aassign(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_andassign(pTHX) {
+STATIC OP *DataAlias_pp_andassign(pTHX) {
 	dSP;
 	SV *a2 = POPs;
 	SV *sv = da_fetch(aTHX_ TOPs, a2);
@@ -1059,7 +1066,7 @@ OP *DataAlias_pp_andassign(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_orassign(pTHX) {
+STATIC OP *DataAlias_pp_orassign(pTHX) {
 	dSP;
 	SV *a2 = POPs;
 	SV *sv = da_fetch(aTHX_ TOPs, a2);
@@ -1072,7 +1079,7 @@ OP *DataAlias_pp_orassign(pTHX) {
 }
 
 #if DA_HAVE_OP_DORASSIGN
-OP *DataAlias_pp_dorassign(pTHX) {
+STATIC OP *DataAlias_pp_dorassign(pTHX) {
 	dSP;
 	SV *a2 = POPs;
 	SV *sv = da_fetch(aTHX_ TOPs, a2);
@@ -1085,7 +1092,7 @@ OP *DataAlias_pp_dorassign(pTHX) {
 }
 #endif
 
-OP *DataAlias_pp_push(pTHX) {
+STATIC OP *DataAlias_pp_push(pTHX) {
 	dSP; dMARK; dORIGMARK; dTARGET;
 	AV *av = (AV *) *++MARK;
 	I32 i;
@@ -1100,7 +1107,7 @@ OP *DataAlias_pp_push(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_unshift(pTHX) {
+STATIC OP *DataAlias_pp_unshift(pTHX) {
 	dSP; dMARK; dORIGMARK; dTARGET;
 	AV *av = (AV *) *++MARK;
 	I32 i = 0;
@@ -1114,7 +1121,7 @@ OP *DataAlias_pp_unshift(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_splice(pTHX) {
+STATIC OP *DataAlias_pp_splice(pTHX) {
 	dSP; dMARK; dORIGMARK;
 	I32 ins = SP - MARK - 3;
 	AV *av = (AV *) MARK[1];
@@ -1168,7 +1175,7 @@ OP *DataAlias_pp_splice(pTHX) {
 	RETURN;
 }
 
-OP *DataAlias_pp_leave(pTHX) {
+STATIC OP *DataAlias_pp_leave(pTHX) {
 	dSP;
 	SV **newsp;
 	PMOP *newpm;
@@ -1208,7 +1215,7 @@ OP *DataAlias_pp_leave(pTHX) {
 	return NORMAL;
 }
 
-OP *DataAlias_pp_return(pTHX) {
+STATIC OP *DataAlias_pp_return(pTHX) {
 	dSP; dMARK;
 	I32 cxix;
 	PERL_CONTEXT *cx;
@@ -1284,8 +1291,8 @@ OP *DataAlias_pp_return(pTHX) {
 		if (optype == OP_REQUIRE && !SvTRUE(sv)
 				&& (gimme == G_SCALAR || MARK == SP)) {
 			sv = cx->blk_eval.old_namesv;
-			hv_delete(GvHVn(PL_incgv), SvPVX_const(sv), SvCUR(sv),
-					G_DISCARD);
+			(void) hv_delete(GvHVn(PL_incgv), SvPVX_const(sv),
+					SvCUR(sv), G_DISCARD);
 			DIE(aTHX_ "%"SVf" did not return a true value", sv);
 		}
 		break;
@@ -1297,6 +1304,7 @@ OP *DataAlias_pp_return(pTHX) {
 		break;
 	default:
 		DIE(aTHX_ "panic: return");
+		retop = NULL;   /* suppress "uninitialized" warning */
 	}
 
 	TAINT_NOT;
@@ -1334,14 +1342,14 @@ OP *DataAlias_pp_return(pTHX) {
 	return retop;
 }
 
-OP *DataAlias_pp_leavesub(pTHX) {
+STATIC OP *DataAlias_pp_leavesub(pTHX) {
 	if (++PL_markstack_ptr == PL_markstack_max)
 		markstack_grow();
 	*PL_markstack_ptr = cxstack[cxstack_ix].blk_oldsp;
 	return DataAlias_pp_return(aTHX);
 }
 
-OP *DataAlias_pp_entereval(pTHX) {
+STATIC OP *DataAlias_pp_entereval(pTHX) {
 	dDAforce;
 	PERL_CONTEXT *iscope = da_iscope;
 	I32 inside = da_inside;
@@ -1361,7 +1369,7 @@ OP *DataAlias_pp_entereval(pTHX) {
 	return ret;
 }
 
-OP *DataAlias_pp_copy(pTHX) {
+STATIC OP *DataAlias_pp_copy(pTHX) {
 	dSP; dMARK;
 	SV *sv;
 	switch (GIMME_V) {
@@ -1728,14 +1736,18 @@ STATIC OP *da_ck_rv2cv(pTHX_ OP *o) {
 	char *s, *start_s;
 	CV *cv;
 	o = da_old_ck_rv2cv(aTHX_ o);
+#if (PERL_COMBI_VERSION >= 5009005)
+	if (!PL_parser)
+		return o;
+#endif
+	if (PL_lex_state != LEX_NORMAL && PL_lex_state != LEX_INTERPNORMAL)
+		return o; /* not lexing? */
 	kid = cUNOPo->op_first;
 	if (kid->op_type != OP_GV || !DA_ACTIVE || (
 			(cv = GvCV(kGVOP_gv)) != da_cv && cv != da_cvc ))
 		return o;
 	if (o->op_private & OPpENTERSUB_AMPER)
 		return o;
-	if (PL_lex_state != LEX_NORMAL && PL_lex_state != LEX_INTERPNORMAL)
-		return o; /* not lexing? */
 	SvPOK_off(cv);
 	o->op_ppaddr = da_tag_rv2cv;
 	if (cv == da_cv)
@@ -1773,6 +1785,23 @@ STATIC OP *da_ck_rv2cv(pTHX_ OP *o) {
 		if ((PL_nexttype[PL_nexttoke++] = yylex()) == '{') {
 			PL_nexttype[PL_nexttoke++] = DO;
 			sv_setpv((SV *) cv, "$");
+			if (PERL_COMBI_VERSION >= 5011002 &&
+					*PL_bufptr == '(') {
+				/*
+				 * A paren here triggers special lexer
+				 * behaviour for a parenthesised argument
+				 * list, which screws up the normal
+				 * parsing that we want to continue.
+				 * Suppress it by injecting a semicolon,
+				 * which is otherwise a no-op coming just
+				 * after the opening brace of a block.
+				 */
+				Move(PL_bufptr, PL_bufptr+1,
+					PL_bufend+1-PL_bufptr, char);
+				*PL_bufptr = ';';
+				PL_bufend++;
+				SvCUR(PL_linestr)++;
+			}
 		}
 		if(PL_lex_state != LEX_KNOWNEXT) {
 			PL_lex_defer = PL_lex_state;
@@ -1826,9 +1855,12 @@ STATIC OP *da_ck_rv2cv(pTHX_ OP *o) {
 STATIC OP *da_ck_entersub(pTHX_ OP *o) {
 	dDA;
 	OP *kid = cUNOPo->op_first;
-	OP *last = kLISTOP->op_last;
-	OP *tmp;
+	OP *last, *tmp;
 	int inside;
+	if (!(kid->op_type == OP_LIST ||
+			(kid->op_type == OP_NULL && kid->op_targ == OP_LIST)))
+		return da_old_ck_entersub(aTHX_ o);
+	last = kLISTOP->op_last;
 	if (!DA_ACTIVE || !(kid->op_flags & OPf_KIDS)
 				|| last->op_ppaddr != da_tag_rv2cv)
 		return da_old_ck_entersub(aTHX_ o);

@@ -1,4 +1,21 @@
-Revision history for Perl extension Data::Alias
+version 1.13; 2011-04-25
+
+  * bugfix: prevent the lexer getting confused if the first thing inside
+    an alias{} block is an open paren
+
+  * bugfix: don't crash if an rv2cv op is built with PL_parser null
+
+  * bugfix: handle variant structure of entersub op which lacks (ex-)list
+    op as direct child
+
+  * bugfix: squash bogus dtrace-related macro definitions that are picked
+    up due to defining PERL_CORE
+
+  * switch all pp functions to internal linkage
+
+  * avoid some compiler warnings
+
+  * include .cvsignore file in distribution
 
 1.12  Tue Feb 22 20:47 GMT 2011
 	- Updated to work with Perl version 5.13.10, where GvGP() and
