@@ -182,7 +182,11 @@ static char const msg_no_symref[] =
 #endif
 #define SVs_PADFLAGS (SVs_PADBUSY|SVs_PADMY|SVs_PADTMP)
 
+#ifdef pp_dorassign
+#define DA_HAVE_OP_DORASSIGN 1
+#else
 #define DA_HAVE_OP_DORASSIGN (PERL_COMBI_VERSION >= 5009000)
+#endif
 
 #define DA_TIED_ERR "Can't %s alias %s tied %s"
 #define DA_ODD_HASH_ERR "Odd number of elements in hash assignment"
@@ -216,7 +220,6 @@ STATIC OP *(*da_old_ck_entersub)(pTHX_ OP *op);
 #define dDA SV *_da, **_dap
 #define dDAforce SV *_da = *DA_FETCH(FALSE)
 
-#define da_peeps (*(I32 *) &SvCUR(_da))
 #define da_inside (*(I32 *) &SvIVX(_da))
 #define da_iscope (*(PERL_CONTEXT **) &SvPVX(_da))
 #define da_old_peepp (*(void (**)(pTHX_ OP *)) &LvTARG(_da))
@@ -231,7 +234,6 @@ STATIC OP *(*da_old_ck_entersub)(pTHX_ OP *op);
 #define DA_INIT
 
 STATIC CV *da_cv, *da_cvc;
-STATIC I32 da_peeps;
 STATIC I32 da_inside;
 STATIC PERL_CONTEXT *da_iscope;
 STATIC void (*da_old_peepp)(pTHX_ OP *);
@@ -243,7 +245,7 @@ STATIC OP *da_tag_list(pTHX) { return NORMAL; }
 STATIC OP *da_tag_entersub(pTHX) { return NORMAL; }
 
 STATIC void da_peep(pTHX_ OP *o);
-STATIC int da_peep2(pTHX_ OP *o);
+STATIC void da_peep2(pTHX_ OP *o);
 
 STATIC SV *da_fetch(pTHX_ SV *a1, SV *a2) {
 	switch ((Size_t) a1) {
@@ -1354,18 +1356,12 @@ STATIC OP *DataAlias_pp_entereval(pTHX) {
 	PERL_CONTEXT *iscope = da_iscope;
 	I32 inside = da_inside;
 	I32 cxi = (cxstack_ix < cxstack_max) ? cxstack_ix + 1 : cxinc();
-	void (*peepp)(pTHX_ OP *) = PL_peepp;
 	OP *ret;
 	da_iscope = &cxstack[cxi];
 	da_inside = 1;
-	if (peepp != da_peep) {
-		da_old_peepp = peepp;
-		PL_peepp = da_peep;
-	}
 	ret = PL_ppaddr[OP_ENTEREVAL](aTHX);
 	da_iscope = iscope;
 	da_inside = inside;
-	PL_peepp = peepp;
 	return ret;
 }
 
@@ -1536,10 +1532,7 @@ STATIC int da_transform(pTHX_ OP *op, int sib) {
 				break;
 			case OP_LIST:
 				if (op->op_ppaddr == da_tag_list) {
-					if (da_peep2(aTHX_ op)) {
-						dDAforce;
-						PL_peepp = da_old_peepp;
-					}
+					da_peep2(aTHX_ op);
 					return hits;
 				}
 				break;
@@ -1659,14 +1652,13 @@ STATIC int da_transform(pTHX_ OP *op, int sib) {
 	return hits;
 }
 
-STATIC int da_peep2(pTHX_ OP *o) {
+STATIC void da_peep2(pTHX_ OP *o) {
 	OP *sib, *k;
 	int useful;
 	while (o->op_ppaddr != da_tag_list) {
 		while ((sib = o->op_sibling)) {
 			if ((o->op_flags & OPf_KIDS) && (k = cUNOPo->op_first)){
-				if (da_peep2(aTHX_ k))
-					return 1;
+				da_peep2(aTHX_ k);
 			} else switch (o->op_type ? o->op_type : o->op_targ) {
 			case_OP_SETSTATE_
 			case OP_NEXTSTATE:
@@ -1676,7 +1668,7 @@ STATIC int da_peep2(pTHX_ OP *o) {
 			o = sib;
 		}
 		if (!(o->op_flags & OPf_KIDS) || !(o = cUNOPo->op_first))
-			return 0;
+			return;
 	}
 	useful = o->op_private & OPpUSEFUL;
 	op_null(o);
@@ -1702,10 +1694,6 @@ STATIC int da_peep2(pTHX_ OP *o) {
 			}
 		}
 	}
-	{
-		dDAforce;
-		return !--da_peeps;
-	}
 }
 
 STATIC void da_peep(pTHX_ OP *o) {
@@ -1719,8 +1707,8 @@ STATIC void da_peep(pTHX_ OP *o) {
 			o = tmp;
 		if (da_transform(aTHX_ o, FALSE))
 			da_inside = 2;
-	} else if (da_peep2(aTHX_ o)) {
-		PL_peepp = da_old_peepp;
+	} else {
+		da_peep2(aTHX_ o);
 	}
 	LEAVE;
 }
@@ -1836,10 +1824,6 @@ STATIC OP *da_ck_rv2cv(pTHX_ OP *o) {
 				memset(start_s, ' ', PL_bufptr-start_s);
 		}
 	}
-	if (!da_peeps++) {
-		da_old_peepp = PL_peepp;
-		PL_peepp = da_peep;
-	}
 	if (da_iscope != &cxstack[cxstack_ix]) {
 		SAVEVPTR(da_iscope);
 		SAVEI32(da_inside);
@@ -1916,6 +1900,8 @@ BOOT:
 		PL_check[OP_ENTERSUB] = da_ck_entersub;
 	}
 	CvLVALUE_on(get_cv("Data::Alias::deref", TRUE));
+	da_old_peepp = PL_peepp;
+	PL_peepp = da_peep;
 	}
 
 void

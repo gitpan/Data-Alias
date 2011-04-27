@@ -1,3 +1,13 @@
+version 1.14; 2011-04-27
+
+  * bugfix: never unhook peephole optimiser, because unhooking is liable
+    to fail if anything else hooked it
+
+  * bugfix: revise check for dorassign opcode to cope with FreeBSD's
+    mutant Perl 5.8 that has it
+
+  * test POD syntax and coverage
+
 version 1.13; 2011-04-25
 
   * bugfix: prevent the lexer getting confused if the first thing inside

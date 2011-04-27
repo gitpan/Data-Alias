@@ -45,3 +45,5 @@ t/lib/assign.pm
 t/lib/Test/Builder.pm
 t/lib/Test/More.pm
 t/lib/Test/Simple.pm
+t/pod_cvg.t
+t/pod_syn.t

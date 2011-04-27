@@ -5,7 +5,7 @@ use 5.008001;
 use strict;
 use warnings;
 
-our $VERSION = '1.13';
+our $VERSION = '1.14';
 
 use base 'Exporter';
 use base 'DynaLoader';
@@ -335,12 +335,11 @@ replaces operations within the scope of C<alias> by aliasing variants.
 For those familiar with perl's internals:  it triggers on a ck_rv2cv which 
 resolves to the imported C<alias> sub, and does a parser hack to allow the 
 C<alias BLOCK> syntax.  When the ck_entersub is triggered that corresponds to 
-it, the op is marked to be found later.  The actual work is done in a peep-hook 
-which is installed on the ck_rv2cv trigger, and processes the marked entersub 
+it, the op is marked to be found later.  The actual work is done in a peep-hook,
+which processes the marked entersub 
 and its children, replacing the pp_addrs with aliasing replacements.  The peep 
 hook will also take care of any subs defined within the lexical (but not 
-dynamical) scope between the ck_rv2cv and the ck_entersub.  When no marked 
-entersubs remain, the Data::Alias-peeper stops and is deinstalled.
+dynamical) scope between the ck_rv2cv and the ck_entersub.
 
 =head1 KNOWN ISSUES
 
