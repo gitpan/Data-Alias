@@ -1,3 +1,10 @@
+version 1.15; 2011-06-21
+
+  * port to Perl 5.15.0, where the op type aelemfast has been split into
+    aelemfast and aelemfast_lex
+
+  * test compatibility with Devel::CallParser
+
 version 1.14; 2011-04-27
 
   * bugfix: never unhook peephole optimiser, because unhooking is liable

@@ -533,7 +533,12 @@ STATIC OP *DataAlias_pp_anonhash(pTHX) {
 
 STATIC OP *DataAlias_pp_aelemfast(pTHX) {
 	dSP;
-	AV *av = (PL_op->op_flags & OPf_SPECIAL) ?
+	AV *av =
+#if (PERL_COMBI_VERSION >= 5015000)
+		PL_op->op_type == OP_AELEMFAST_LEX ?
+#else
+		(PL_op->op_flags & OPf_SPECIAL) ?
+#endif
 			(AV *) PAD_SV(PL_op->op_targ) : GvAVn(cGVOP_gv);
 	IV index = PL_op->op_private;
 	if (!av_fetch(av, index, TRUE))
@@ -1401,6 +1406,9 @@ STATIC void da_lvalue(pTHX_ OP *op, int list) {
 						   DA_OUTER_ERR);
 			   break;
 	case OP_AELEM:     op->op_ppaddr = DataAlias_pp_aelem;     break;
+#if (PERL_COMBI_VERSION >= 5015000)
+	case OP_AELEMFAST_LEX:
+#endif
 	case OP_AELEMFAST: op->op_ppaddr = DataAlias_pp_aelemfast; break;
 	case OP_HELEM:     op->op_ppaddr = DataAlias_pp_helem;     break;
 	case OP_ASLICE:    op->op_ppaddr = DataAlias_pp_aslice;    break;
