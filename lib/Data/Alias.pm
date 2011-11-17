@@ -5,7 +5,7 @@ use 5.008001;
 use strict;
 use warnings;
 
-our $VERSION = '1.15';
+our $VERSION = '1.16';
 
 use base 'Exporter';
 use base 'DynaLoader';
@@ -288,8 +288,23 @@ An attempt to do any of these on tied (or "magical") array will result in a
 
 =item Returning an alias
 
-Returns aliases from the current C<sub> or C<eval>.  Normally this only happens 
-for lvalue subs, but C<alias return> can be used in any sub.
+Returns aliases from the current C<sub> or C<eval>.  Normally this only
+happens for lvalue subs, but C<alias return> can be used in any sub.
+Lvalue subs only work for scalar return values, but C<alias return>
+can handle a list of return values.
+
+A sub call will very often copy the return value(s) immediately after
+they have been returned.  C<alias return> can't prevent that.  To pass
+an alias through a sub return and into something else, the call site
+must process the return value using an aliasing operation, or at least a
+non-copying one.  For example, ordinary assignment with the sub call on
+the right hand side will copy, but if the call site is in the scope of an
+C<alias> pragma then the assignment will instead alias the return value.
+
+When alias-returning a list of values from a subroutine, each individual
+value in the list is aliased.  The list as a whole is not aliasable;
+it is not an array.  At the call site, a list of aliases can be captured
+into separate variables or into an array, by an aliasing list assignment.
 
 =item Subroutines and evaluations
 

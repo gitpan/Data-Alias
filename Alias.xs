@@ -308,7 +308,8 @@ STATIC SV *da_fetch(pTHX_ SV *a1, SV *a2) {
 		}							\
 	} STMT_END
 
-STATIC void da_restore_gvcv(pTHX_ GV *gv) {
+STATIC void da_restore_gvcv(pTHX_ void *gv_v) {
+	GV *gv = (GV*)gv_v;
 	CV *restcv = (CV *) SSPOPPTR;
 	CV *oldcv = GvCV(gv);
 	GvCV_set(gv, restcv);
@@ -365,18 +366,16 @@ STATIC void da_alias(pTHX_ SV *a1, SV *a2, SV *value) {
 			}
 			GvMULTI_on(gv);
 			if (GvINTRO(gv)) {
+				SvREFCNT_inc_simple_void_NN((SV *) gv);
+				SvREFCNT_inc_simple_void_NN(value);
 				GvINTRO_off(gv);
-				SSCHECK(4);
+				SSCHECK(1);
 				SSPUSHPTR((SV *) oldcv);
-				SSPUSHDXPTR((void (*)(pTHX_ void *))
-					da_restore_gvcv);
-				SSPUSHPTR(SvREFCNT_inc_simple_NN((SV *) gv));
-				SSPUSHINT(SAVEt_DESTRUCTOR_X);
-				GvCV_set(gv,
-					(CV *) SvREFCNT_inc_simple_NN(value));
+				SAVEDESTRUCTOR_X(da_restore_gvcv, (void*)gv);
+				GvCV_set(gv, (CV*)value);
 			} else {
-				GvCV_set(gv,
-					(CV *) SvREFCNT_inc_simple_NN(value));
+				SvREFCNT_inc_simple_void_NN(value);
+				GvCV_set(gv, (CV*)value);
 				SvREFCNT_dec((SV *) oldcv);
 			}
 			return;
@@ -423,7 +422,8 @@ STATIC void da_alias(pTHX_ SV *a1, SV *a2, SV *value) {
 	Perl_croak(aTHX_ DA_TARGET_ERR);
 }
 
-STATIC void da_unlocalize_gvar(pTHX_ GP *gp) {
+STATIC void da_unlocalize_gvar(pTHX_ void *gp_v) {
+	GP *gp = (GP*) gp_v;
 	SV *value = (SV *) SSPOPPTR;
 	SV **sptr = (SV **) SSPOPPTR;
 	SV *old = *sptr;
@@ -442,12 +442,10 @@ STATIC void da_unlocalize_gvar(pTHX_ GP *gp) {
 }
 
 STATIC void da_localize_gvar(pTHX_ GP *gp, SV **sptr) {
-	SSCHECK(5);
+	SSCHECK(2);
 	SSPUSHPTR(sptr);
 	SSPUSHPTR(*sptr);
-	SSPUSHDXPTR((void (*)(pTHX_ void *)) da_unlocalize_gvar);
-	SSPUSHPTR(gp);
-	SSPUSHINT(SAVEt_DESTRUCTOR_X);
+	SAVEDESTRUCTOR_X(da_unlocalize_gvar, (void*)gp);
 	++gp->gp_refcnt;
 	*sptr = Nullsv;
 }

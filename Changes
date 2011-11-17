@@ -1,3 +1,13 @@
+version 1.16; 2011-11-17
+
+  * bugfix: use supported API to put destructor calls on the save stack
+    (the unsupported way used before was wrong for 64-bit systems on
+    perl 5.13.1 and later)
+
+  * document the behaviour of "alias return" in more detail
+
+  * convert .cvsignore to .gitignore
+
 version 1.15; 2011-06-21
 
   * port to Perl 5.15.0, where the op type aelemfast has been split into
