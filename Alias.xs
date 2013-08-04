@@ -1,8 +1,8 @@
 /* Copyright (C) 2003, 2004, 2006, 2007  Matthijs van Duin <xmath@cpan.org>
  *
- * Copyright (C) 2010, 2011 Andrew Main (Zefram) <zefram@fysh.org>
+ * Copyright (C) 2010, 2011, 2013 Andrew Main (Zefram) <zefram@fysh.org>
  *
- * Parts from perl, which is Copyright (C) 1991-2006 Larry Wall and others
+ * Parts from perl, which is Copyright (C) 1991-2013 Larry Wall and others
  *
  * You may distribute under the same terms as perl itself, which is either 
  * the GNU General Public License or the Artistic License.
@@ -28,8 +28,13 @@
 #if defined(USE_DTRACE) && defined(PERL_CORE)
 #undef ENTRY_PROBE
 #undef RETURN_PROBE
+#if (PERL_COMBI_VERSION < 5013008)
+#define ENTRY_PROBE(func, file, line)
+#define RETURN_PROBE(func, file, line)
+#else
 #define ENTRY_PROBE(func, file, line, stash)
 #define RETURN_PROBE(func, file, line, stash)
+#endif
 #endif
 
 #if defined(PERL_CORE) && defined(MULTIPLICITY) && \
@@ -45,7 +50,7 @@
 
 
 #ifndef RenewOpc
-#ifdef PL_OP_SLAB_ALLOC
+#if defined(PL_OP_SLAB_ALLOC) || (PERL_COMBI_VERSION >= 5017002)
 #define RenewOpc(m,v,n,t,c)		\
 	STMT_START {			\
 		t *tMp_;		\
@@ -126,6 +131,15 @@
 
 #ifndef op_lvalue
 #define op_lvalue(o, t) mod(o, t)
+#endif
+
+#define DA_HAVE_OP_PADRANGE (PERL_COMBI_VERSION >= 5017006)
+
+#if DA_HAVE_OP_PADRANGE
+#define IS_PUSHMARK_OR_PADRANGE(op) \
+	((op)->op_type == OP_PUSHMARK || (op)->op_type == OP_PADRANGE)
+#else
+#define IS_PUSHMARK_OR_PADRANGE(op) ((op)->op_type == OP_PUSHMARK)
 #endif
 
 #if (PERL_COMBI_VERSION >= 5011000) && !defined(SVt_RV)
@@ -697,6 +711,79 @@ STATIC OP *DataAlias_pp_hslice(pTHX) {
 	RETURN;
 }
 
+#if DA_HAVE_OP_PADRANGE
+
+STATIC OP *DataAlias_pp_padrange_generic(pTHX_ bool is_single) {
+	dSP;
+	IV start = PL_op->op_targ;
+	IV count = PL_op->op_private & OPpPADRANGE_COUNTMASK;
+	IV index;
+	if (PL_op->op_flags & OPf_SPECIAL) {
+		AV *av = GvAVn(PL_defgv);
+		PUSHMARK(SP);
+		if (is_single) {
+			XPUSHs((SV*)av);
+		} else {
+			const I32 maxarg = AvFILL(av) + 1;
+			EXTEND(SP, maxarg);
+			if (SvRMAGICAL(av)) {
+				U32 i;
+				for (i=0; i < (U32)maxarg; i++) {
+					SV ** const svp =
+						av_fetch(av, i, FALSE);
+					SP[i+1] = svp ?
+						SvGMAGICAL(*svp) ?
+							(mg_get(*svp), *svp) :
+							*svp :
+						&PL_sv_undef;
+				}
+			} else {
+				Copy(AvARRAY(av), SP+1, maxarg, SV*);
+			}
+			SP += maxarg;
+		}
+	}
+	if ((PL_op->op_flags & OPf_WANT) != OPf_WANT_VOID) {
+		PUSHMARK(SP);
+		EXTEND(SP, count << 1);
+	}
+	for(index = start; index != start+count; index++) {
+		Size_t da_type;
+		if (is_single) {
+			da_type = DA_ALIAS_PAD;
+		} else {
+			switch(SvTYPE(PAD_SVl(index))) {
+				case SVt_PVAV: da_type = DA_ALIAS_AV; break;
+				case SVt_PVHV: da_type = DA_ALIAS_HV; break;
+				default: da_type = DA_ALIAS_PAD; break;
+			}
+		}
+		if (PL_op->op_private & OPpLVAL_INTRO) {
+			if (da_type == DA_ALIAS_PAD) {
+				SAVEGENERICSV(PAD_SVl(index));
+				PAD_SVl(index) = &PL_sv_undef;
+			} else {
+				SAVECLEARSV(PAD_SVl(index));
+			}
+		}
+		if ((PL_op->op_flags & OPf_WANT) != OPf_WANT_VOID)
+			PUSHaa(da_type, da_type == DA_ALIAS_PAD ?
+						(Size_t)index :
+						(Size_t)PAD_SVl(index));
+	}
+	RETURN;
+}
+
+STATIC OP *DataAlias_pp_padrange_list(pTHX) {
+	return DataAlias_pp_padrange_generic(aTHX_ 0);
+}
+
+STATIC OP *DataAlias_pp_padrange_single(pTHX) {
+	return DataAlias_pp_padrange_generic(aTHX_ 1);
+}
+
+#endif
+
 STATIC OP *DataAlias_pp_padsv(pTHX) {
 	dSP;
 	IV index = PL_op->op_targ;
@@ -780,7 +867,7 @@ STATIC OP *DataAlias_pp_rv2sv(pTHX) {
 		sv = (SV *) (GvEGV(sv) ? GvEGV(sv) : fixglob(aTHX_ (GV *) sv));
 	if (PL_op->op_private & OPpLVAL_INTRO) {
 		if (SvTYPE(sv) != SVt_PVGV || SvFAKE(sv))
-			DIE(aTHX_ PL_no_localize_ref);
+			DIE(aTHX_ "%s", PL_no_localize_ref);
 		switch (PL_op->op_type) {
 		case OP_RV2AV:
 			da_localize_gvar(aTHX_ GvGP(sv), (SV **) &GvAV(sv));
@@ -1403,6 +1490,22 @@ STATIC void da_lvalue(pTHX_ OP *op, int list) {
 				   Perl_warner(aTHX_ packWARN(WARN_CLOSURE),
 						   DA_OUTER_ERR);
 			   break;
+#if DA_HAVE_OP_PADRANGE
+	case OP_PADRANGE: {
+		int start = op->op_targ;
+		int count = op->op_private & OPpPADRANGE_COUNTMASK;
+		int i;
+		if (!list) goto bad;
+		for(i = start; i != start+count; i++) {
+			   if (SvFAKE(AvARRAY(PL_comppad_name)[i])
+					   && ckWARN(WARN_CLOSURE))
+				   Perl_warner(aTHX_ packWARN(WARN_CLOSURE),
+						   DA_OUTER_ERR);
+		}
+		if (op->op_ppaddr != DataAlias_pp_padrange_single)
+			op->op_ppaddr = DataAlias_pp_padrange_list;
+	} break;
+#endif
 	case OP_AELEM:     op->op_ppaddr = DataAlias_pp_aelem;     break;
 #if (PERL_COMBI_VERSION >= 5015000)
 	case OP_AELEMFAST_LEX:
@@ -1479,7 +1582,7 @@ STATIC void da_aassign(OP *op, OP *right) {
 		return;
 	if (left->op_type || !(left->op_flags & OPf_KIDS))
 		return;
-	if (!(left = cUNOPx(left)->op_first) || left->op_type != OP_PUSHMARK)
+	if (!(left = cUNOPx(left)->op_first) || !IS_PUSHMARK_OR_PADRANGE(left))
 		return;
 	if (!(la = left->op_sibling) || la->op_sibling)
 		return;
@@ -1492,12 +1595,21 @@ STATIC void da_aassign(OP *op, OP *right) {
 	}
 	if (right->op_type || !(right->op_flags & OPf_KIDS))
 		return;
-	if (!(right = cUNOPx(right)->op_first) || right->op_type != OP_PUSHMARK)
+	if (!(right = cUNOPx(right)->op_first) ||
+			!IS_PUSHMARK_OR_PADRANGE(right))
 		return;
 	op->op_private = hash ? OPpALIASHV : OPpALIASAV;
 	la->op_ppaddr = pad ? DataAlias_pp_padsv : DataAlias_pp_rv2sv;
-	if (pad)
+	if (pad) {
 		la->op_type = OP_PADSV;
+#if DA_HAVE_OP_PADRANGE
+		if (left->op_type == OP_PADRANGE)
+			left->op_ppaddr = DataAlias_pp_padrange_single;
+		else if (right->op_type == OP_PADRANGE &&
+				(right->op_flags & OPf_SPECIAL))
+			right->op_ppaddr = DataAlias_pp_padrange_single;
+#endif
+	}
 	if (!(ra = right->op_sibling) || ra->op_sibling)
 		return;
 	if (ra->op_flags & OPf_PARENS)
@@ -1595,7 +1707,16 @@ STATIC int da_transform(pTHX_ OP *op, int sib) {
 			da_aassign(op, kid);
 			MOD(kid);
 			ksib = FALSE;
-			da_lvalue(aTHX_ kid->op_sibling, TRUE);
+#if DA_HAVE_OP_PADRANGE
+			for (tmp = kid; tmp->op_type == OP_NULL &&
+						(tmp->op_flags & OPf_KIDS); )
+			tmp = cUNOPx(tmp)->op_first;
+			if (tmp->op_type == OP_PADRANGE &&
+					(tmp->op_flags & OPf_SPECIAL))
+				da_lvalue(aTHX_ tmp, TRUE);
+			else
+#endif
+				da_lvalue(aTHX_ kid->op_sibling, TRUE);
 			break;
 		case OP_SASSIGN:
 

@@ -5,7 +5,7 @@ use 5.008001;
 use strict;
 use warnings;
 
-our $VERSION = '1.16';
+our $VERSION = '1.17';
 
 use base 'Exporter';
 use base 'DynaLoader';
@@ -100,6 +100,15 @@ applicable dereferencing operator to each.  This means that:
 behaves like:
 
     $$scalarref, @$arrayref, %$hashref
+
+Where an array or hash reference is given, the returned list does not
+include the array or hash as an lvalue; the array/hash is expanded and
+the list includes its elements.  Scalars, including the elements of an
+array/hash, I<are> treated as lvalues, and can be enreferenced using
+the C<\> operator or aliased to using the C<alias> operator.  This is
+slightly different from what you'd get using the built-in dereference
+operators: C<@$arrayref> references the array as an lvalue, so C<\>
+or C<alias> can operate on the array itself rather than just its elements.
 
 =head1 EXAMPLES
 
@@ -196,9 +205,11 @@ C<$var2> can be anything that is valid on the left-side of an alias-assignment.
     alias $var ||= $foo;
     alias $var //= $foo; # (perl 5.9.x or later)
 
-=item whole aggregate assignment
+=item whole aggregate assignment from whole aggregate
 
-These alias entire aggregates (arrays or hashes), not merely their contents.  
+This occurs where the expressions on both sides of the assignment operator
+are purely complete arrays or hashes.
+The entire aggregate is aliased, not merely the contents.  
 This means for example that C<\@lexarray == \@foo>.
 
     alias my @lexarray = @foo;
@@ -215,19 +226,32 @@ and analogously to assignment to scalar dereference, these will change C<$ref>
 to reference the aggregate, if C<$ref> was undef or already a reference.  If 
 C<$ref> is a string or glob, the corresponding package variable is aliased.
 
-If the right-side expression is not an aggregate (of the same type), then a new 
-one is implicitly constructed.  This means:
+Anything more complex than a whole-aggregate expression on either side,
+even just enclosing the aggregate expression in parentheses, will prevent
+the assignment qualifying for this category.  It will instead go into
+one of the following two categories.  Parenthesisation is the recommended
+way to avoid whole-aggregate aliasing where it is unwanted.  If you want
+to merely replace the contents of the left-side aggregate with aliases
+to the contents of the right-side aggregate, parenthesise the left side.
 
+=item whole aggregate assignment from list
+
+If the left-side expression is purely a complete array or hash,
+and the right-side expression is not purely a matching aggregate, then a new 
+aggregate is implicitly constructed.  This means:
+
+    alias my @lexfoo = (@foo);
     alias my @array = ($x, $y, $z);
     alias my %hash = (x => $x, y => $y);
 
 is translated to:
 
+    alias my @lexfoo = @{ [@foo] };
     alias my @array = @{ [$x, $y, $z] };
     alias my %hash = %{ {x => $x, y => $y} };
 
 If you want to merely replace the contents of the aggregate with aliases to the 
-contents of another aggregate, but not alias the aggregates themselves, you can 
+contents of another aggregate, rather than create a new aggregate, you can 
 force list-assignment by parenthesizing the left side, see below.
 
 =item list assignment
@@ -388,7 +412,7 @@ updated it to work with Perl versions 5.11.0 and later.
 =head1 LICENSE
 
 Copyright (C) 2003-2007  Matthijs van Duin.
-Copyright (C) 2010, 2011 Andrew Main (Zefram) <zefram@fysh.org>.
+Copyright (C) 2010, 2011, 2013 Andrew Main (Zefram) <zefram@fysh.org>.
 All rights reserved.
 This program is free software; you can redistribute it and/or modify 
 it under the same terms as Perl itself.

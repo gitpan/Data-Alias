@@ -1,3 +1,22 @@
+version 1.17; 2013-08-04
+
+  * bugfix: correct the dtrace-related macro squashing for Perls prior
+    to 5.13.8, where the macros had the wrong number of parameters and
+    prevented compilation
+
+  * bugfix: use core's PL_no_localize_ref string constant as data string
+    rather than format string
+
+  * update to handle the new padrange op type in Perl 5.17.6
+
+  * update to handle the new op allocation mechanism in Perl 5.17.2
+
+  * clarify and expand documentation around list-like assignments
+
+  * clarify documentation of deref() regarding lvalueness
+
+  * remove the bulk of the documentation from the README file
+
 version 1.16; 2011-11-17
 
   * bugfix: use supported API to put destructor calls on the save stack
