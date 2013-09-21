@@ -1,3 +1,14 @@
+version 1.18; 2013-09-21
+
+  * bugfix: store peep chain link reliably under threads
+
+  * update tests for Perl 5.19.4's removal of the special treatment of
+    aliased undef in arrays
+
+  * in doc, switch to consistent use of British English spellings
+
+  * doc typo fix
+
 version 1.17; 2013-08-04
 
   * bugfix: correct the dtrace-related macro squashing for Perls prior

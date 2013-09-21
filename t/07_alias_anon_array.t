@@ -30,7 +30,7 @@ is_deeply refs(@$x), refs($x, $y, $z);
 $x = alias [undef, $y, undef];
 is @$x, 3;
 is \$x->[1], \$y;
-ok !exists $x->[0];
-ok !exists $x->[2];
+ok "$]" < 5.019004 ? !exists($x->[0]) : \$x->[0] eq \undef;
+ok "$]" < 5.019004 ? !exists($x->[2]) : \$x->[2] eq \undef;
 
 # vim: ft=perl

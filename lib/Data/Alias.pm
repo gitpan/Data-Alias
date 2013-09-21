@@ -5,7 +5,7 @@ use 5.008001;
 use strict;
 use warnings;
 
-our $VERSION = '1.17';
+our $VERSION = '1.18';
 
 use base 'Exporter';
 use base 'DynaLoader';
@@ -65,7 +65,7 @@ Aliasing occurs in Perl for example in for-loops and sub-calls:
     }
 
 Data::Alias is a module that allows you to apply "aliasing semantics" to a 
-section of code, causing aliases to be made whereever Perl would normally make 
+section of code, causing aliases to be made wherever Perl would normally make 
 copies instead.  You can use this to improve efficiency and readability, when 
 compared to using references.
 
@@ -271,7 +271,7 @@ last item, its contents are replaced by the list of all remaining right-side
 elements.  C<undef> can also appear on the left side to skip one corresponding 
 item in the right-side list.
 
-Beware when putting a parenthesized list on the left side.  Just like Perl 
+Beware when putting a parenthesised list on the left side.  Just like Perl 
 parses C<print (1+2)*10> as C<(print(1+2))*10>, it would parse C<alias ($x, $y) 
 = ($y, $x)> as C<(alias($x, $y)) = ($y, $x)> which does not do any aliasing, 
 and results in the "Useless use of alias" warning, if warnings are enabled.
@@ -355,7 +355,7 @@ subroutine or evaluation.
 
 Use of local inside C<alias> usually behaves the same as local does in general, 
 however there is a difference if the variable is tied:  in this case, Perl 
-doesn't localize the variable at all but instead preserves the tie by saving a 
+doesn't localise the variable at all but instead preserves the tie by saving a 
 copy of the current value, and restoring this value at end of scope.
 
     alias local $_ = $string;

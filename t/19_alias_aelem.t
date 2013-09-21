@@ -29,7 +29,7 @@ alias { is \(local $x[0] = $x[1]), \$x[1]; is \$x[0], \$x[1] };
 is \$x[0], \$x[2];
 
 is \alias($x[0] = undef), \undef;
-ok !exists $x[0];
+ok "$]" < 5.019004 ? !exists($x[0]) : \$x[0] eq \undef;
 
 my @y;
 
@@ -52,7 +52,7 @@ alias { is \(local $y[0] = $y[1]), \$y[1]; is \$y[0], \$y[1] };
 is \$y[0], \$y[2];
 
 is \alias($y[0] = undef), \undef;
-ok !exists $y[0];
+ok "$]" < 5.019004 ? !exists($y[0]) : \$y[0] eq \undef;
 
 sub{alias my ($x) = @_}->($y[0]);
 ok exists $y[0];

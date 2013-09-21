@@ -236,7 +236,6 @@ STATIC OP *(*da_old_ck_entersub)(pTHX_ OP *op);
 
 #define da_inside (*(I32 *) &SvIVX(_da))
 #define da_iscope (*(PERL_CONTEXT **) &SvPVX(_da))
-#define da_old_peepp (*(void (**)(pTHX_ OP *)) &LvTARG(_da))
 #define da_cv (*(CV **) &LvTARGOFF(_da))
 #define da_cvc (*(CV **) &LvTARGLEN(_da))
 
@@ -250,9 +249,10 @@ STATIC OP *(*da_old_ck_entersub)(pTHX_ OP *op);
 STATIC CV *da_cv, *da_cvc;
 STATIC I32 da_inside;
 STATIC PERL_CONTEXT *da_iscope;
-STATIC void (*da_old_peepp)(pTHX_ OP *);
 
 #endif
+
+STATIC void (*da_old_peepp)(pTHX_ OP *);
 
 STATIC OP *da_tag_rv2cv(pTHX) { return NORMAL; }
 STATIC OP *da_tag_list(pTHX) { return NORMAL; }

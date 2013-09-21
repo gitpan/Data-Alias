@@ -49,3 +49,4 @@ t/lib/Test/Simple.pm
 t/padrange.t
 t/pod_cvg.t
 t/pod_syn.t
+t/threads.t
